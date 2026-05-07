@@ -2,3 +2,4 @@ streamlit
 scikit-learn
 PyPDF2
 matplotlib
+openpyxl
