@@ -4,12 +4,66 @@ from sklearn.metrics.pairwise import cosine_similarity
 import PyPDF2
 import os
 import json
+import pandas as pd
 import matplotlib.pyplot as plt
 
-# 📂 Config
-os.makedirs("cvs_guardados", exist_ok=True)
+# CONFIG
+st.set_page_config(
+    page_title="MD Headhunter ATS",
+    page_icon="💼",
+    layout="wide"
+)
 
-# 🔐 LOGIN SIMPLE
+# CSS PREMIUM
+st.markdown("""
+<style>
+
+.main {
+    background-color: #f4f6f9;
+}
+
+[data-testid="stSidebar"] {
+    background-color: #111827;
+}
+
+h1, h2, h3 {
+    color: #111827;
+}
+
+.stButton>button {
+    width: 100%;
+    border-radius: 12px;
+    height: 45px;
+    border: none;
+    background-color: #2563eb;
+    color: white;
+    font-weight: bold;
+}
+
+.stButton>button:hover {
+    background-color: #1d4ed8;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 15px;
+}
+
+.metric-card {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    text-align: center;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# LOGIN
 USUARIO = "admin"
 PASSWORD = "1234"
 
@@ -17,21 +71,35 @@ if "login" not in st.session_state:
     st.session_state.login = False
 
 if not st.session_state.login:
-    st.title("🔐 Login ATS")
 
-    user = st.text_input("Usuario")
-    pwd = st.text_input("Contraseña", type="password")
+    col1, col2, col3 = st.columns([1,2,1])
 
-    if st.button("Ingresar"):
-        if user == USUARIO and pwd == PASSWORD:
-            st.session_state.login = True
-            st.rerun()
-        else:
-            st.error("Credenciales incorrectas")
+    with col2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="card">
+        <h1 style='text-align:center;'>💼 MD Headhunter</h1>
+        <p style='text-align:center;'>ATS Recruitment System</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        usuario = st.text_input("👤 Usuario")
+        password = st.text_input("🔒 Contraseña", type="password")
+
+        if st.button("Ingresar"):
+
+            if usuario == USUARIO and password == PASSWORD:
+                st.session_state.login = True
+                st.rerun()
+            else:
+                st.error("Credenciales incorrectas")
 
     st.stop()
 
-# 📂 Cargar datos
+# BASE
+os.makedirs("cvs_guardados", exist_ok=True)
+
 if os.path.exists("candidatos.json"):
     with open("candidatos.json", "r") as f:
         candidatos = json.load(f)
@@ -42,96 +110,174 @@ def guardar():
     with open("candidatos.json", "w") as f:
         json.dump(candidatos, f)
 
-# 📄 Leer PDF
 def leer_pdf(file):
     texto = ""
     lector = PyPDF2.PdfReader(file)
+
     for p in lector.pages:
         texto += p.extract_text() or ""
+
     return texto.lower()
 
-# UI
-st.title("💼 MD Headhunter | ATS PRO WEB")
+# SIDEBAR
+st.sidebar.image(
+    "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+    width=120
+)
 
-vacante = st.text_area("📄 Descripción de vacante")
+st.sidebar.title("MD Headhunter")
 
-archivos = st.file_uploader("📂 Subir CVs", type=["pdf"], accept_multiple_files=True)
+menu = st.sidebar.radio(
+    "📌 Menú",
+    ["Dashboard", "Evaluar CVs", "Pipeline"]
+)
 
-# 🧠 Evaluar
-if st.button("🧠 Evaluar candidatos"):
+# DASHBOARD
+if menu == "Dashboard":
 
-    if not vacante:
-        st.warning("Agrega vacante")
-    else:
-        for archivo in archivos:
-            texto_cv = leer_pdf(archivo)
+    st.title("📊 Dashboard ATS")
 
-            textos = [vacante.lower(), texto_cv]
-            vec = TfidfVectorizer().fit_transform(textos)
-            sim = cosine_similarity(vec[0:1], vec[1:2])[0][0]
-            score = round(sim * 100, 2)
+    total = len(candidatos)
+    aptos = sum(1 for c in candidatos if c["estado"] == "Apto")
+    entrevistas = sum(1 for c in candidatos if c["estado"] == "Entrevista")
+    rechazados = sum(1 for c in candidatos if c["estado"] == "Rechazado")
 
-            estado = "APTO" if score > 70 else "MEDIO" if score > 40 else "NO APTO"
+    col1, col2, col3, col4 = st.columns(4)
 
-            candidatos.append({
-                "nombre": archivo.name,
-                "score": score,
-                "estado": "Postulado"
-            })
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+        <h2>{total}</h2>
+        <p>Total</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-            st.success(f"{archivo.name} → {score}% ({estado})")
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+        <h2>{aptos}</h2>
+        <p>Aptos</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        guardar()
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+        <h2>{entrevistas}</h2>
+        <p>Entrevistas</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-# 📊 DASHBOARD
-st.subheader("📊 Dashboard")
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card">
+        <h2>{rechazados}</h2>
+        <p>Rechazados</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-total = len(candidatos)
-aptos = sum(1 for c in candidatos if c["estado"] == "Apto")
-entrevista = sum(1 for c in candidatos if c["estado"] == "Entrevista")
-rechazados = sum(1 for c in candidatos if c["estado"] == "Rechazado")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-col1, col2, col3, col4 = st.columns(4)
+    # GRÁFICA
+    fig, ax = plt.subplots()
 
-col1.metric("Total", total)
-col2.metric("Aptos", aptos)
-col3.metric("Entrevista", entrevista)
-col4.metric("Rechazados", rechazados)
+    estados = ["Apto", "Entrevista", "Rechazado"]
+    valores = [aptos, entrevistas, rechazados]
 
-# 📈 GRÁFICA
-st.subheader("📈 Gráfica")
+    ax.bar(estados, valores)
 
-fig, ax = plt.subplots()
-estados = ["Apto", "Entrevista", "Rechazado"]
-valores = [aptos, entrevista, rechazados]
+    st.pyplot(fig)
 
-ax.bar(estados, valores)
-ax.set_title("Estado de candidatos")
+# EVALUAR
+elif menu == "Evaluar CVs":
 
-st.pyplot(fig)
+    st.title("🧠 Evaluación Inteligente")
 
-# 🔍 BUSCADOR
-busqueda = st.text_input("🔍 Buscar candidato")
+    vacante = st.text_area(
+        "📄 Descripción de vacante",
+        height=200
+    )
 
-# 📊 FILTRO
-filtro = st.selectbox("📊 Filtro", ["Todos", "Postulado", "Apto", "Entrevista", "Rechazado"])
+    archivos = st.file_uploader(
+        "📂 Subir CVs PDF",
+        type=["pdf"],
+        accept_multiple_files=True
+    )
 
-# 📋 PIPELINE
-st.subheader("📋 Pipeline")
+    if st.button("🚀 Analizar candidatos"):
 
-for c in candidatos:
-    if busqueda.lower() in c["nombre"].lower():
-        if filtro == "Todos" or c["estado"] == filtro:
+        if not vacante:
+            st.warning("Agrega descripción de vacante")
 
-            col1, col2 = st.columns([3,1])
+        else:
 
-            col1.write(f"{c['nombre']} - {c['estado']}")
+            for archivo in archivos:
 
-            if col2.button("Apto", key=c["nombre"]+"a"):
-                c["estado"] = "Apto"
-            if col2.button("Entrevista", key=c["nombre"]+"e"):
-                c["estado"] = "Entrevista"
-            if col2.button("Rechazado", key=c["nombre"]+"r"):
-                c["estado"] = "Rechazado"
+                texto_cv = leer_pdf(archivo)
 
-guardar()
+                textos = [vacante.lower(), texto_cv]
+
+                vec = TfidfVectorizer().fit_transform(textos)
+
+                sim = cosine_similarity(
+                    vec[0:1],
+                    vec[1:2]
+                )[0][0]
+
+                score = round(sim * 100, 2)
+
+                estado = (
+                    "Apto"
+                    if score > 70
+                    else "Medio"
+                    if score > 40
+                    else "Rechazado"
+                )
+
+                candidatos.append({
+                    "nombre": archivo.name,
+                    "score": score,
+                    "estado": estado
+                })
+
+                st.success(
+                    f"{archivo.name} analizado → {score}%"
+                )
+
+            guardar()
+
+# PIPELINE
+elif menu == "Pipeline":
+
+    st.title("📋 Pipeline de Reclutamiento")
+
+    buscar = st.text_input("🔍 Buscar candidato")
+
+    filtro = st.selectbox(
+        "📌 Filtrar",
+        ["Todos", "Apto", "Entrevista", "Rechazado", "Medio"]
+    )
+
+    datos = []
+
+    for c in candidatos:
+
+        if buscar.lower() in c["nombre"].lower():
+
+            if filtro == "Todos" or c["estado"] == filtro:
+
+                datos.append(c)
+
+                with st.container():
+
+                    st.markdown(f"""
+                    <div class="card">
+                    <h4>{c['nombre']}</h4>
+                    <p>Score: {c['score']}%</p>
+                    <p>Estado: {c['estado']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    if datos:
+        df = pd.DataFrame(datos)
+        st.dataframe(df, use_container_width=True)
